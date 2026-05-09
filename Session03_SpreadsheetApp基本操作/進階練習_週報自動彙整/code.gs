@@ -89,14 +89,13 @@ function 彙整週報() {
     var 總覽表 = ss.getSheetByName("週報總覽");
     if (總覽表) 總覽表.clear(); else 總覽表 = ss.insertSheet("週報總覽", 0);
 
-    // 標題
+    // 標題列 (A1)
     總覽表.getRange("A1:F1").merge();
-    總覽表.getRange("A1").setValue("📊 各部門週報彙整總覽")
-      .setFontSize(16).setFontWeight("bold").setHorizontalAlignment("center");
-    總覽表.getRange("A2").setValue("彙整時間：" +
-      Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy/MM/dd HH:mm"));
+    var 時間戳記 = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy/MM/dd HH:mm");
+    總覽表.getRange("A1").setValue("📊 週報彙整總覽 (彙整時間：" + 時間戳記 + ")")
+      .setFontWeight("bold").setBackground("#cfd8dc").setHorizontalAlignment("left");
 
-    var 目前列 = 4;
+    var 目前列 = 2;
 
     sheets.forEach(function(sheet) {
       if (sheet.getName().indexOf("週報_") !== 0) return;
@@ -139,6 +138,111 @@ function 彙整週報() {
 
   } catch (錯誤) {
     Logger.log("❌ 錯誤：" + 錯誤.message);
+  }
+}
+
+/**
+ * 建立週報完成率統計圖表
+ * 說明：統計各部門完成事項的比例，並在「統計報表」工作表產生圖表
+ */
+function 建立週報統計圖表() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheets = ss.getSheets();
+    var 統計表 = ss.getSheetByName("統計報表");
+    
+    // 如果已存在則清理，否則新建
+    if (統計表) {
+      統計表.clear();
+      // 移除舊圖表
+      var charts = 統計表.getCharts();
+      charts.forEach(function(c) { 統計表.removeChart(c); });
+    } else {
+      統計表 = ss.insertSheet("統計報表");
+    }
+
+    var 統計資料 = [["部門", "總任務數", "已完成數", "完成率"]];
+    
+    sheets.forEach(function(sheet) {
+      var name = sheet.getName();
+      // 只處理週報工作表
+      if (name.indexOf("週報_") !== 0) return;
+
+      var 部門名 = name.replace("週報_", "").split("_")[0];
+      // 讀取「本週完成事項」範圍 (A7:E12)
+      var 資料 = sheet.getRange(7, 1, 6, 5).getValues();
+      
+      var 總數 = 0;
+      var 已完成 = 0;
+      
+      資料.forEach(function(row) {
+        var 項目 = row[1]; // 工作項目
+        var 狀態 = row[3]; // 狀態
+        if (項目 && String(項目).trim() !== "") {
+          總數++;
+          // 判斷是否包含「已完成」字樣
+          if (狀態 && String(狀態).indexOf("已完成") !== -1) {
+            已完成++;
+          }
+        }
+      });
+      
+      if (總數 > 0) {
+        統計資料.push([部門名, 總數, 已完成, 已完成 / 總數]);
+      }
+    });
+
+    if (統計資料.length <= 1) {
+      SpreadsheetApp.getUi().alert("⚠️ 找不到有效的週報資料，請先填寫各部門的「本週完成事項」。");
+      return;
+    }
+
+    // 1. 設定標題列 (A1)
+    統計表.getRange("A1:D1").merge();
+    var 時間 = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy/MM/dd HH:mm");
+    統計表.getRange("A1").setValue("📊 各部門週報完成率統計總覽 (" + 時間 + ")")
+      .setFontWeight("bold").setBackground("#cfd8dc").setHorizontalAlignment("left");
+
+    // 2. 寫入統計數據 (從 A2 開始)
+    var 數據起始列 = 2;
+    統計表.getRange(數據起始列, 1, 統計資料.length, 4).setValues(統計資料);
+    
+    // 3. 格式化表格
+    var 總列數 = 統計資料.length;
+    統計表.getRange(數據起始列, 1, 1, 4).setBackground("#4285f4").setFontColor("#ffffff").setFontWeight("bold");
+    統計表.getRange(數據起始列 + 1, 4, 總列數 - 1, 1).setNumberFormat("0%"); // 完成率百分比
+    統計表.getRange(數據起始列, 1, 總列數, 4).setHorizontalAlignment("center").setBorder(true, true, true, true, true, true);
+
+    // 4. 建立圖表
+    var 圖表 = 統計表.newChart()
+      .setChartType(Charts.ChartType.COLUMN)
+      .addRange(統計表.getRange(數據起始列, 1, 總列數, 1)) // X 軸：部門 (包含標題列)
+      .addRange(統計表.getRange(數據起始列, 4, 總列數, 1)) // Y 軸：完成率 (包含標題列)
+      .setNumHeaders(1) // 明確指定第 1 列為標題
+      .setPosition(數據起始列 + 1, 6, 0, 0) // 圖表放置在 F3 左右
+      .setOption('title', '各部門週報任務完成率統計')
+      .setOption('vAxis', {
+        format: 'percent',
+        minValue: 0,
+        maxValue: 1,
+        title: '達成率'
+      })
+      .setOption('hAxis', { title: '部門' })
+      .setOption('colors', ['#34a853'])
+      .setOption('legend', { position: 'none' })
+      .build();
+
+    統計表.insertChart(圖表);
+    
+    // 自動調整欄寬
+    for (var i = 1; i <= 4; i++) 統計表.autoResizeColumn(i);
+
+    統計表.activate();
+    SpreadsheetApp.getUi().alert("✅ 統計報表與圖表已重新建立！");
+
+  } catch (錯誤) {
+    Logger.log("❌ 統計錯誤：" + 錯誤.message);
+    SpreadsheetApp.getUi().alert("❌ 建立統計圖表時發生錯誤：" + 錯誤.message);
   }
 }
 
@@ -285,6 +389,7 @@ function onOpen() {
     .addItem("📋 建立本週週報", "建立本週週報")
     .addItem("📝 新增週報範例資料", "新增週報範例資料")
     .addItem("📊 彙整所有週報", "彙整週報")
+    .addItem("📈 建立完成率統計圖", "建立週報統計圖表")
     .addSeparator()
     .addItem("⏰ 設定週一自動建立", "設定週一自動建立")
     .addItem("⏰ 設定週五自動彙整", "設定週五自動彙整")
