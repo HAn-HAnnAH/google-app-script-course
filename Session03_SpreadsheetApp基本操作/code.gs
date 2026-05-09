@@ -188,6 +188,84 @@ function 自動建立月報表() {
   }
 }
 
+/**
+ * 自動建立週報表工作表
+ * 說明：根據目前日期，自動建立週報表（含標題與格式）
+ */
+function 自動建立週報表() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var 員工表 = ss.getSheetByName("員工資料");
+    
+    if (!員工表) {
+      SpreadsheetApp.getUi().alert("❌ 找不到「員工資料」工作表，請先點選「初始化員工資料」。");
+      return;
+    }
+
+    // 1. 取得員工基本資料 (作為負責人)
+    var 最後一列 = 員工表.getLastRow();
+    if (最後一列 < 2) {
+      SpreadsheetApp.getUi().alert("⚠️ 員工資料中沒有數據。");
+      return;
+    }
+    // 取得姓名 (第 1 欄)
+    var 員工姓名資料 = 員工表.getRange(2, 1, 最後一列 - 1, 1).getValues();
+
+    // 2. 準備新工作表
+    var 今天 = new Date();
+    var 年 = 今天.getFullYear();
+    var 月 = 今天.getMonth() + 1;
+    // 簡單判斷週次
+    var 第幾週 = Math.ceil(今天.getDate() / 7);
+    var 表名 = 年 + "年" + 月 + "月第" + 第幾週 + "週工作報表";
+
+    // 檢查工作表是否已存在
+    var 既有表 = ss.getSheetByName(表名);
+    if (既有表) {
+      SpreadsheetApp.getUi().alert("⚠️ 「" + 表名 + "」已存在，請先刪除舊表或更名。");
+      return;
+    }
+
+    var 新表 = ss.insertSheet(表名);
+
+    // 3. 設定標題列與格式
+    var 標題 = [["日期", "事項", "負責人", "進度(%)"]];
+    新表.getRange("A1:D1").setValues(標題);
+    
+    var 標題範圍 = 新表.getRange("A1:D1");
+    標題範圍.setBackground("#34a853").setFontColor("#ffffff").setFontWeight("bold").setHorizontalAlignment("center");
+
+    // 4. 準備並寫入報表內容
+    var 報表內容 = [];
+    var 日期字串 = Utilities.formatDate(今天, "Asia/Taipei", "yyyy/MM/dd");
+    for (var i = 0; i < 員工姓名資料.length; i++) {
+      var 姓名 = 員工姓名資料[i][0];
+      報表內容.push([日期字串, "請填寫工作事項", 姓名, 0]);
+    }
+
+    // 寫入所有資料
+    新表.getRange(2, 1, 報表內容.length, 4).setValues(報表內容);
+
+    // 5. 最後修飾
+    新表.getRange(2, 4, 報表內容.length, 1).setNumberFormat("0'%'"); // 格式化進度百分比
+    新表.setFrozenRows(1); // 凍結首列
+    
+    for (var j = 1; j <= 4; j++) {
+      新表.autoResizeColumn(j);
+      var 目前寬度 = 新表.getColumnWidth(j);
+      新表.setColumnWidth(j, 目前寬度 + 30);
+    }
+
+    Logger.log("✅ 「" + 表名 + "」建立完成。");
+    SpreadsheetApp.getUi().alert("✅ 「" + 表名 + "」建立完成！");
+
+  } catch (錯誤) {
+    Logger.log("❌ 錯誤：" + 錯誤.message);
+    SpreadsheetApp.getUi().alert("❌ 錯誤：" + 錯誤.message);
+  }
+}
+
+
 // ============================================================
 // 第三部分：讀寫儲存格
 // ============================================================
@@ -466,6 +544,7 @@ function onOpen() {
     .addItem("📝 讀寫儲存格示範", "讀寫儲存格示範")
     .addSeparator()
     .addItem("📅 建立當月報表", "自動建立月報表")
+    .addItem("📅 建立週報表", "自動建立週報表")
     .addItem("⏰ 設定每日觸發器", "設定每日觸發器")
     .addItem("🗑️ 刪除所有觸發器", "刪除所有觸發器")
     .addToUi();
