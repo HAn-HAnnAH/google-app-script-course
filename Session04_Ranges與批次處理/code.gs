@@ -268,8 +268,16 @@ function 批次更新庫存() {
     var 庫存總值列 = [];
     var 庫存狀態列 = [];
     var 總庫存值 = 0;
+    var 低庫存清單 = []; // 用來儲存需要發送預警的商品資訊
 
     for (var i = 1; i < 資料.length; i++) {
+      var 商品名稱 = 資料[i][0]; // A: 商品名稱
+      
+      // --- 新增：如果商品名稱是空的，表示讀到了舊的總計列或空白列，跳過不處理 ---
+      if (!商品名稱 || String(商品名稱).trim() === "" || 商品名稱 === "總庫存值：") {
+        continue;
+      }
+
       var 單價 = 資料[i][1];     // B: 單價
       var 安全庫存 = 資料[i][2]; // C: 安全庫存量
       var 目前庫存 = 資料[i][3]; // D: 目前庫存
@@ -277,12 +285,14 @@ function 批次更新庫存() {
 
       庫存總值列.push([庫存總值]);
 
-      // 判斷庫存狀態
+      // 判斷庫存狀態並記錄低庫存商品
       var 狀態;
       if (目前庫存 <= 0) {
         狀態 = "🔴 缺貨";
+        低庫存清單.push("- " + 商品名稱 + "：【缺貨】目前庫存為 0");
       } else if (目前庫存 < 安全庫存) {
         狀態 = "🟡 低庫存";
+        低庫存清單.push("- " + 商品名稱 + "：【低庫存】目前 " + 目前庫存 + " (低於安全水位 " + 安全庫存 + ")");
       } else {
         狀態 = "🟢 正常";
       }
@@ -292,25 +302,50 @@ function 批次更新庫存() {
     }
 
     // Step 3：一次寫回所有結果
-    var 資料筆數 = 資料.length - 1;
+    var 資料筆數 = 庫存總值列.length; // 使用實際有計算到的筆數
+    
+    // 先清除 G 欄與 F 欄可能存在的舊狀態（避免資料縮減時殘留舊標籤）
+    sheet.getRange(2, 6, sheet.getLastRow(), 2).clearContent();
+    
     sheet.getRange(2, 6, 資料筆數, 1).setValues(庫存總值列);  // F 欄：庫存總值
     sheet.getRange(2, 7, 資料筆數, 1).setValues(庫存狀態列);  // G 欄：狀態
 
     // 數字格式
     sheet.getRange(2, 6, 資料筆數, 1).setNumberFormat("#,##0");
 
-    // 在最後寫入總計
-    var 總計列 = 資料.length + 1;
+    // --- 修改：清理並重新寫入總計列 ---
+    var 商品最後一列 = 資料筆數 + 1;
+    // 清除商品下方所有可能的舊總計列 (清除 10 列空間)
+    sheet.getRange(商品最後一列 + 1, 1, 10, 7).clear();
+    
+    var 總計列 = 商品最後一列 + 1;
     sheet.getRange(總計列, 5).setValue("總庫存值：");
     sheet.getRange(總計列, 5).setFontWeight("bold");
     sheet.getRange(總計列, 6).setValue(總庫存值);
     sheet.getRange(總計列, 6).setNumberFormat("#,##0").setFontWeight("bold").setBackground("#e8f5e9");
 
+    // --- 發送預警郵件 ---
+    if (低庫存清單.length > 0) {
+      var 收件人 = "rainbowfish1106@gmail.com"; // 指定收件人
+      var 主旨 = "⚠️ 庫存預警通知 - " + Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy/MM/dd");
+      var 內容 = "系統檢測到以下商品庫存不足，請儘速處理：\n\n" + 低庫存清單.join("\n") + 
+                 "\n\n這是一封由 Google Apps Script 自動產生的信件。";
+      
+      // 改用 GmailApp 嘗試觸發更穩定的授權機制
+      GmailApp.sendEmail(收件人, 主旨, 內容);
+      Logger.log("✅ 已發送預警郵件至：" + 收件人);
+    }
+
     Logger.log("✅ 庫存更新完成！總庫存值：NT$" + 總庫存值.toLocaleString());
-    SpreadsheetApp.getUi().alert("✅ 庫存更新完成！\n總庫存值：NT$ " + 總庫存值.toLocaleString());
+    var 提示訊息 = "✅ 庫存更新完成！\n總庫存值：NT$ " + 總庫存值.toLocaleString();
+    if (低庫存清單.length > 0) {
+      提示訊息 += "\n\n⚠️ 注意：已偵測到 " + 低庫存清單.length + " 項低庫存商品，並已寄送預警信件。";
+    }
+    SpreadsheetApp.getUi().alert(提示訊息);
 
   } catch (錯誤) {
     Logger.log("❌ 錯誤：" + 錯誤.message);
+    SpreadsheetApp.getUi().alert("❌ 執行發生錯誤：" + 錯誤.message);
   }
 }
 
