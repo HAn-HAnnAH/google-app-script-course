@@ -423,9 +423,79 @@ function onOpen() {
     .addItem("📋 生成部門清單", "生成部門清單")
     .addItem("📊 更新專案狀態", "定時更新專案狀態")
     .addItem("📈 專案進度摘要", "生成專案摘要")
+    .addItem("💰 生成薪資報表", "生成部門薪資報表")
     .addSeparator()
     .addItem("🔬 函數進階示範", "函數進階示範")
     .addItem("🗂️ 資料結構化示範", "資料結構化示範")
     .addItem("⏰ 設定定期更新", "設定定期更新觸發器")
     .addToUi();
+}
+
+// ============================================================
+// 延伸練習實作
+// ============================================================
+
+/**
+ * 練習 2：生成部門薪資報表
+ * 說明：計算每個部門的總薪資、人數與平均薪資，並產出報表
+ */
+function 生成部門薪資報表() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var 人員表 = ss.getSheetByName("專案人員");
+    if (!人員表) {
+      SpreadsheetApp.getUi().alert("❌ 請先執行「初始化專案資料」");
+      return;
+    }
+
+    // 1. 讀取並結構化資料
+    var 資料 = 人員表.getDataRange().getValues();
+    var 標題 = 資料[0];
+    var 員工列表 = [];
+    for (var i = 1; i < 資料.length; i++) {
+      var 員工 = {};
+      for (var j = 0; j < 標題.length; j++) {
+        員工[標題[j]] = 資料[i][j];
+      }
+      員工列表.push(員工);
+    }
+
+    // 2. 統計各部門數據
+    var 部門統計 = {};
+    員工列表.forEach(function(員工) {
+      var 名稱 = 員工["部門"];
+      var 薪資 = 員工["月薪"];
+      
+      if (!部門統計[名稱]) {
+        部門統計[名稱] = { 總薪資: 0, 人數: 0 };
+      }
+      部門統計[名稱].總薪資 += 薪資;
+      部門統計[名稱].人數 += 1;
+    });
+
+    // 3. 準備報表資料
+    var 報表內容 = [["部門名稱", "編制人數", "部門總薪資", "平均薪資"]];
+    for (var 部門 in 部門統計) {
+      var 統計 = 部門統計[部門];
+      var 平均 = Math.round(統計.總薪資 / 統計.人數);
+      報表內容.push([部門, 統計.人數, 統計.總薪資, 平均]);
+    }
+
+    // 4. 寫入工作表
+    var 報表表 = ss.getSheetByName("薪資報表");
+    if (報表表) 報表表.clear(); else 報表表 = ss.insertSheet("薪資報表");
+
+    報表表.getRange(1, 1, 報表內容.length, 4).setValues(報表內容);
+    
+    // 5. 美化格式
+    報表表.getRange("A1:D1").setBackground("#4caf50").setFontColor("#fff").setFontWeight("bold");
+    報表表.getRange(2, 3, 報表內容.length - 1, 2).setNumberFormat("#,##0");
+    報表表.setFrozenRows(1);
+    for (var k = 1; k <= 4; k++) 報表表.autoResizeColumn(k);
+
+    SpreadsheetApp.getUi().alert("✅ 薪資報表已生成！請查看「薪資報表」工作表。");
+
+  } catch (錯誤) {
+    Logger.log("❌ 錯誤：" + 錯誤.message);
+  }
 }
