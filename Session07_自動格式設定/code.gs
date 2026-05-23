@@ -279,6 +279,14 @@ function 自動生成格式表格() {
     // 凍結標題
     sheet.setFrozenRows(4);
 
+    // 尋找指定的文字「Q4預算」並修改為紅字粗體
+    var 搜尋器 = sheet.createTextFinder("Q4預算");
+    var 找到的儲存格 = 搜尋器.findAll();
+    for (var j = 0; j < 找到的儲存格.length; j++) {
+      找到的儲存格[j].setFontColor("#ff0000"); // 設定字體顏色為紅色
+      找到的儲存格[j].setFontWeight("bold");   // 設定字體為粗體
+    }
+
     Logger.log("✅ 格式化報表已生成！");
     SpreadsheetApp.getUi().alert("✅ 專業格式報表已生成！\n請查看「格式化報表」工作表。");
 
@@ -286,6 +294,80 @@ function 自動生成格式表格() {
     Logger.log("❌ 錯誤：" + 錯誤.message);
     SpreadsheetApp.getUi().alert("❌ 錯誤：" + 錯誤.message);
   }
+}
+
+// 跨工作表合併資料並產生新工作表
+function 執行合併並產生新工作表() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ssID = ss.getId();
+  var allsheets = ss.getSheets();
+  
+  // 1. 取得所有「工作表」開頭的分頁合併資料
+  var data = getDataFromSpreadsheet(ssID);
+  
+  if (data.length === 0) {
+    SpreadsheetApp.getUi().alert("⚠️ 沒有找到以「工作表」開頭的分頁，或是這些分頁中沒有資料！");
+    return;
+  }
+  
+  // 2. 尋找第一個以「工作表」開頭的分頁，複製其標題列 (A1:L1)
+  var 標題列 = [];
+  for (var s in allsheets) {
+    var sheet = allsheets[s];
+    if (sheet.getName().indexOf("工作表") === 0) {
+      標題列 = sheet.getRange("A1:L1").getValues();
+      break;
+    }
+  }
+  
+  // 3. 建立或清除「合併結果」工作表
+  var 合併工作表 = ss.getSheetByName("合併結果");
+  if (合併工作表) {
+    合併工作表.clear(); // 若已存在則清除內容
+  } else {
+    合併工作表 = ss.insertSheet("合併結果"); // 若不存在則新建
+  }
+  
+  // 4. 寫入標題列 (Row 1)
+  if (標題列.length > 0) {
+    合併工作表.getRange("A1:L1").setValues(標題列);
+    // 稍微美化一下標題列
+    合併工作表.getRange("A1:L1")
+      .setBackground("#e3f2fd")
+      .setFontWeight("bold")
+      .setHorizontalAlignment("center");
+  }
+  
+  // 5. 寫入合併資料 (Row 2 開始)
+  合併工作表.getRange(2, 1, data.length, data[0].length).setValues(data);
+  
+  // 6. 自動調整欄寬
+  for (var c = 1; c <= 12; c++) {
+    合併工作表.autoResizeColumn(c);
+  }
+  
+  SpreadsheetApp.getUi().alert("✅ 跨工作表資料合併完成！\n已將資料匯入至「合併結果」分頁。");
+}
+
+function getDataFromSpreadsheet(ssID){
+  var ss = SpreadsheetApp.openById(ssID)
+  var allsheets = ss.getSheets();
+  var data = []
+  
+  for(var s in allsheets){
+    var sheet = allsheets[s];
+    // 檢查工作表名稱是否以「工作表」開頭（例如：工作表1、工作表2）
+    if(sheet.getName().indexOf("工作表") === 0){
+      var lastrownum = sheet.getLastRow();
+      // 如果工作表只有標題列（列數小於 2），則跳過不讀取以避免錯誤
+      if (lastrownum < 2) {
+        continue;
+      }
+      var values = sheet.getRange("A2:L" + lastrownum).getValues();
+      data = data.concat(values)      
+    }
+  }
+  return data;
 }
 
 /**
@@ -331,6 +413,14 @@ function 一鍵美化() {
     // 凍結標題列
     sheet.setFrozenRows(1);
 
+    // 尋找指定的文字「Q4預算」並修改為紅字粗體
+    var 搜尋器 = sheet.createTextFinder("Q4預算");
+    var 找到的儲存格 = 搜尋器.findAll();
+    for (var j = 0; j < 找到的儲存格.length; j++) {
+      找到的儲存格[j].setFontColor("#ff0000"); // 設定字體顏色為紅色
+      找到的儲存格[j].setFontWeight("bold");   // 設定字體為粗體
+    }
+
     SpreadsheetApp.getUi().alert("✅ 工作表已美化完成！");
 
   } catch (錯誤) {
@@ -369,5 +459,7 @@ function onOpen() {
     .addSeparator()
     .addItem("📊 自動生成格式表格", "自動生成格式表格")
     .addItem("✨ 一鍵美化當前表", "一鍵美化")
+    .addSeparator()
+    .addItem("🔗 執行跨工作表合併", "執行合併並產生新工作表")
     .addToUi();
 }

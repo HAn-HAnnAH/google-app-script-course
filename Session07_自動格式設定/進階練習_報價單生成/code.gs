@@ -159,5 +159,37 @@ function onOpen() {
     .createMenu("🤖 報價單系統")
     .addItem("📦 初始化報價資料", "初始化報價資料")
     .addItem("📋 生成報價單", "生成報價單")
+    .addItem('Convert to PDF and Email', 'convertSheetToPDFAndEmail')
     .addToUi();
+}
+
+
+function convertSheetToPDFAndEmail() {
+  // Prompt the user for an email address
+  var email = Browser.inputBox('Enter the email address to send the PDF to:');
+
+  // Check if the email is valid
+  if (!email || !validateEmail(email)) {
+    Browser.msgBox('Invalid email address. Please try again.');
+    return;
+  }
+
+  // Get the active spreadsheet
+  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = spreadsheet.getActiveSheet();
+
+  // Convert the sheet to PDF
+  var pdf = DriveApp.getFileById(spreadsheet.getId()).getAs('application/pdf');
+
+  // Email the PDF
+  var subject = 'Your requested PDF';
+  var body = 'Please find the attached PDF of the Google Sheets document.';
+  MailApp.sendEmail(email, subject, body, {attachments: [pdf]});
+
+  Browser.msgBox('PDF sent to ' + email);
+}
+
+function validateEmail(email) {
+  var re = /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/;
+  return re.test(email);
 }
