@@ -110,8 +110,22 @@ function 生成報價單() {
       "1. 報價有效期限 30 天\n2. 付款條件：月結 30 天\n3. 交貨期：訂購後 7~14 個工作天\n4. 以上報價含安裝及教育訓練"
     ).setWrap(true).setFontColor("#555");
 
-    // 欄寬
-    sheet.setColumnWidth(1, 50);
+    // 依據 A6-A9 儲存格的字元寬度動態計算 A 欄欄寬
+    var a6_a9_values = sheet.getRange("A6:A9").getValues();
+    var maxVisualLen = 0;
+    for (var r = 0; r < a6_a9_values.length; r++) {
+      var str = a6_a9_values[r][0].toString();
+      var len = 0;
+      for (var j = 0; j < str.length; j++) {
+        len += (str.charCodeAt(j) > 127) ? 2 : 1; // 中文全形算 2，英文半形算 1
+      }
+      if (len > maxVisualLen) {
+        maxVisualLen = len;
+      }
+    }
+    // 設定 A 欄寬（每個單位寬度約 10 像素 + 左右安全邊距 20 像素，並設定最少 50 像素）
+    var aColWidth = Math.max(50, Math.ceil(maxVisualLen * 10) + 20);
+    sheet.setColumnWidth(1, aColWidth);
     sheet.setColumnWidth(2, 250);
     sheet.setColumnWidth(3, 60);
     sheet.setColumnWidth(4, 80);
