@@ -62,6 +62,12 @@ function 建立柱狀圖() {
       })
       .setOption("colors", ["#1a73e8", "#34a853", "#fbbc04", "#ea4335"])  // 自訂顏色
       .setOption("isStacked", false)                   // 非堆疊
+      .setOption("series", {                            // 顯示數值資料標籤
+        0: { dataLabel: "value" },
+        1: { dataLabel: "value" },
+        2: { dataLabel: "value" },
+        3: { dataLabel: "value" }
+      })
       .build();
 
     sheet.insertChart(chart);
@@ -98,6 +104,12 @@ function 建立堆疊柱狀圖() {
       .setOption("legend", { position: "bottom" })
       .setOption("colors", ["#1a73e8", "#34a853", "#fbbc04", "#ea4335"])
       .setOption("vAxis", { format: "#,##0" })
+      .setOption("series", {                            // 顯示數值資料標籤
+        0: { dataLabel: "value" },
+        1: { dataLabel: "value" },
+        2: { dataLabel: "value" },
+        3: { dataLabel: "value" }
+      })
       .build();
 
     sheet.insertChart(chart);
