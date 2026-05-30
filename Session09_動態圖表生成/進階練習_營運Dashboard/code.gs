@@ -27,10 +27,13 @@ function 建立營運Dashboard() {
     var 資料 = 資料表.getDataRange().getValues();
 
     // --- 圖表 1：月度營收折線圖 ---
+    // 確保欄位名稱與圖表標題及配色對應（#1a73e8 -> 月度營收，#ea4335 -> 月度成本，#34a853 -> 月度利潤）
+    資料表.getRange("B1:D1").setValues([["月度營收", "月度成本", "月度利潤"]]);
     var 月度範圍 = 資料表.getRange("A1:D13");
     var 折線圖 = sheet.newChart()
       .setChartType(Charts.ChartType.LINE)
       .addRange(月度範圍)
+      .setNumHeaders(1)                                // 確保第一列作為標題欄位
       .setPosition(3, 1, 0, 0)
       .setOption("title", "📈 月度營收 vs 成本 vs 利潤趨勢")
       .setOption("titleTextStyle", { fontSize: 14, bold: true })
@@ -46,10 +49,13 @@ function 建立營運Dashboard() {
     // --- 圖表 2：部門營收柱狀圖 ---
     var 部門表 = ss.getSheetByName("部門績效");
     if (部門表) {
+      // 確保欄位名稱對應圖表標題（#90caf9 -> 部門目標，#1565c0 -> 部門實績）
+      部門表.getRange("B1:C1").setValues([["部門目標", "部門實績"]]);
       var 部門範圍 = 部門表.getRange("A1:C7");
       var 柱狀圖 = sheet.newChart()
         .setChartType(Charts.ChartType.COLUMN)
         .addRange(部門範圍)
+        .setNumHeaders(1)                              // 確保第一列作為標題欄位
         .setPosition(3, 7, 0, 0)
         .setOption("title", "📊 部門目標 vs 實績")
         .setOption("titleTextStyle", { fontSize: 14, bold: true })
@@ -67,6 +73,7 @@ function 建立營運Dashboard() {
       var 圓餅圖 = sheet.newChart()
         .setChartType(Charts.ChartType.PIE)
         .addRange(產業範圍)
+        .setNumHeaders(1)                              // 確保第一列作為標題欄位
         .setPosition(23, 1, 0, 0)
         .setOption("title", "🥧 客戶產業分佈")
         .setOption("titleTextStyle", { fontSize: 14, bold: true })
@@ -81,10 +88,13 @@ function 建立營運Dashboard() {
     // --- 圖表 4：月度客戶數量趨勢 ---
     var 客戶趨勢 = ss.getSheetByName("客戶趨勢");
     if (客戶趨勢) {
+      // 確保欄位名稱對應圖表標題（#1a73e8 -> 新客戶數，#34a853 -> 續約客戶數）
+      客戶趨勢.getRange("B1:C1").setValues([["新客戶數", "續約客戶數"]]);
       var 趨勢範圍 = 客戶趨勢.getRange("A1:C13");
       var 面積圖 = sheet.newChart()
         .setChartType(Charts.ChartType.AREA)
         .addRange(趨勢範圍)
+        .setNumHeaders(1)                              // 確保第一列作為標題欄位
         .setPosition(23, 7, 0, 0)
         .setOption("title", "📈 客戶數量趨勢")
         .setOption("titleTextStyle", { fontSize: 14, bold: true })
@@ -106,7 +116,7 @@ function 初始化營運資料() {
   // 營運資料（月度）
   var s1 = ss.getSheetByName("營運資料");
   if (!s1) s1 = ss.insertSheet("營運資料"); else s1.clear();
-  s1.getRange(1, 1, 1, 4).setValues([["月份", "營收", "成本", "利潤"]]);
+  s1.getRange(1, 1, 1, 4).setValues([["月份", "月度營收", "月度成本", "月度利潤"]]);
   var 月度 = [];
   for (var m = 1; m <= 12; m++) {
     var 營收 = 3000000 + m * 200000 + Math.floor(Math.random() * 500000);
@@ -120,7 +130,7 @@ function 初始化營運資料() {
   // 部門績效
   var s2 = ss.getSheetByName("部門績效");
   if (!s2) s2 = ss.insertSheet("部門績效"); else s2.clear();
-  s2.getRange(1, 1, 1, 3).setValues([["部門", "目標", "實績"]]);
+  s2.getRange(1, 1, 1, 3).setValues([["部門", "部門目標", "部門實績"]]);
   s2.getRange(2, 1, 6, 3).setValues([
     ["業務部", 5000000, 4800000], ["行銷部", 2000000, 2100000],
     ["研發部", 3000000, 2900000], ["客服部", 1000000, 950000],
@@ -140,7 +150,7 @@ function 初始化營運資料() {
   // 客戶趨勢
   var s4 = ss.getSheetByName("客戶趨勢");
   if (!s4) s4 = ss.insertSheet("客戶趨勢"); else s4.clear();
-  s4.getRange(1, 1, 1, 3).setValues([["月份", "新客戶", "續約客戶"]]);
+  s4.getRange(1, 1, 1, 3).setValues([["月份", "新客戶數", "續約客戶數"]]);
   var 趨勢 = [];
   for (var n = 1; n <= 12; n++) {
     趨勢.push([n + "月", Math.floor(Math.random() * 10) + 5, Math.floor(Math.random() * 15) + 20]);
